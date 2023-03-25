@@ -5,6 +5,8 @@ Toshikx Platform repository
 
  - [X] Основное ДЗ
  - [X] Задание со *
+<details>
+<summary>Просмотр ДЗ </summary>
 
 ## В процессе сделано:
  - Изучены способы восстановления контейнеров:
@@ -51,11 +53,14 @@ Toshikx Platform repository
 
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания
+</details>
 
 # Выполнено ДЗ № 2
 
  - [X] Основное ДЗ
  - [X] Задание со *
+<details>
+<summary>Просмотр ДЗ </summary>
 
 ## В процессе сделано:
  - Созданы следующие файлы манифестов: 
@@ -159,3 +164,260 @@ Toshikx Platform repository
 
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания
+</details>
+
+# Выполнено ДЗ № 3
+
+ - [X] Основное ДЗ
+ - [X] Задание со *
+<details>
+<summary>Просмотр ДЗ </summary>
+
+## В процессе сделано:
+ - Добавлены проверки на Pod
+ - Созданы следующие файлы манифестов: 
+    - metallb-config.yaml - файл конфигурации сервиса metallb;
+    - nginx-lb.yaml - Сервис типа LoadBalancer, распределяющий трафик для  Ingress Nginx контроллера;
+    - web-deploy.yaml - Deployment сервиса web из первого домашнего задания с исправными readiness & liveness probe;
+    - web-ingress.yaml - Ingress для сервиса web;
+    - web-svc-cip.yaml - Service с типом CluterIP для сервиса web;
+    - web-svc-headless.yaml - Headless Service сервиса web;
+    - web-svc-lb.yaml - Service для сервиса web типа LoadBalancer.
+ - Созданы файлы манифестов для заданий со *:
+    - ./canary/canary-ing.yaml - Ingress с аннотациями для переадресации трафика на новые Pods при canary deploy;
+    - ./coredns/core-dns-lb.yaml - Service типа LoadBalancer для доступа к Kube-DNS вне кластера;
+    - ./dashboard/dashboard-ing.yaml - Ingress для доступа к сервису Kubernetes Dashboard по /dashboard пути адресной строки.
+ - Подготовлен ответ на вопрос:
+    - Вопрос: 
+      Почему следующая конфигурация валидна, но не имеет смысла?
+      ```yaml
+      livenessProbe:
+        exec:
+          command:
+            - 'sh'
+            - '-c'
+            - 'ps aux | grep my_web_server_process'
+      ```
+        - Ответ: Такая команда позволит только увидеть, что процесс запущен, но не даёт информации о его работспособности
+    - Вопрос: Бывают ли ситуации, когда она все-таки имеет смысл?
+        - Ответ: Например в случае, если ошибка конфигурации не позволяет запустить процесс приложения
+## Как запустить проект:
+- Необходимо склонировать себе репозиторий и перейти в ветку kubernetes-intro: 
+  ```sh
+  git clone https://github.com/otus-kuber-2023-02/Toshikx_platform.git
+  cd Toshikx_platform
+  git checkout -b kubernetes-network
+  cd kubernetes-network
+  ```
+- Нужен предварительно настроенный кластер и доступ к нему при помощи kubectl на основе minikube: 
+  ```sh
+  minikube start
+  ```
+- Применить манифест Deployment для сервиса web:
+  ```sh
+  kubectl apply -f web-deploy.yaml
+  ```
+- Применить манифест web-svc-cip.yaml:
+  ```sh
+  kubectl apply -f web-svc-cip.yaml
+  ```
+- Для работы следующей части задания необходимо выполнить конфигурацию IPVS, для этого необходимо выполнить следующее:
+  ```sh
+  kubectl --namespace kube-system edit configmap/kube-proxy
+  ```
+  В открывшемся редакторе найти и заменить поля mode и strictARP на следующие значения:
+  ```yaml
+  ...
+  ipvs:
+    strictARP: true
+  mode: "ipvs"
+  ...
+  ```
+  После чего необходимо перезапустить под kube-proxy:
+  ```sh
+  kubectl --namespace kube-system delete pod --selector='k8s-app=kube-proxy'
+  ```
+
+  Очистка правил iptables:
+    ```sh
+    touch /tmp/iptables.cleanup
+    ```
+    Добавить в созданный файл следующие правила:
+    ```sh
+    *nat
+    -A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
+    COMMIT
+    *filter
+    COMMIT
+    *mangle
+    COMMIT
+    ```
+    Применить конфигурацию:
+    ```sh
+    iptables-restore /tmp/iptables.cleanup
+    ```
+    Проверка результатов после ожидания 30 секунд:
+    ```sh
+    iptables --list -nv -t nat
+    ```
+- Установка metallb:
+  - Для установки metallb версии 0.13.9 (актуальная информация об установке [здесь](https://metallb.org/installation/)) выполнить следующую команду:
+    ```sh
+    kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.9/config/manifests/metallb-native.yaml
+    ```
+  - Применение файла конфигурации:
+    ```sh
+    kubectl apply -f metallb-config.yaml
+    ```
+  - Добавление статического маршрута:
+    ```sh
+    minikube ssh
+    ip addr show eth0 
+    ```
+    В выводе второй команды нужен inet адресс <br />
+    *sample:*
+    ```sh
+    inet 192.168.64.4/24 brd 192.168.64.255 scope global dynamic eth0
+    ```
+    И добавить адресс в основной ОС на IP-адресс Minikube (*Linux sample*):
+    ```sh
+    ip route add 172.17.255.0/24 via 192.168.64.4
+    ```
+- Создание сервиса Web типа LoadBalancer:
+  ```sh
+  kubectl apply -f web-svc-lb.yaml
+  ```
+- Создание сервиса DNS типа LoadBalancer после конфигурирования MetalLB:
+  ```sh
+  kubectl apply -f ./coredns/core-dns-lb.yaml
+  ```
+- Для следующей части задания нужен NGINX Ingress Controller:
+  - Установка: <br />
+    Примените манифест из [актуальной]() версии:
+    ```sh
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.6.4/deploy/static/provider/cloud/deploy.yaml
+    ```
+  - Конфигурирование: <br />
+    Для успешной работы ingress-controller в связке с нашим MetalLB необходимо предварительно удалить сервис, поставляемый NGINX:
+    ```sh
+    kubectl delete svc ingress-nginx-controller -n ingress-nginx
+    ```
+    После чего, применить наш собственный сервис:
+    ```sh
+    kubectl apply -f nginx-lb 
+    ```
+- Применение манифеста headless сервиса web:
+  ```sh
+  kubectl apply -f web-svc-headless.yaml
+  ```
+- Применение манифеста Ingress сервиса web:
+  ```sh
+  kubectl apply -f web-ingress.yaml
+  ```
+- Применение манифеста для dashboard: <br />
+  Прежде чем применять манифест самого Ingress, необходимо получить работающий сервис, актуальная версия [здесь](https://github.com/kubernetes/dashboard): 
+  ```sh
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+  ```
+  После чего можно применять манифест Ingress:
+  ```sh
+  kubectl apply -f ./dashboard/dashboard-ing.yaml
+  ```
+- Применение манифеста ingress с канареечным развёртывыанием:
+  ```sh
+  kubectl apply -f ./canary/canary-ing.yaml
+  ```
+## Как проверить работоспособность:
+### Как проверить работоспособность Web Deployment
+ - Дождаться запуска трёх Pod:
+   ```sh 
+   watch kubectl get po web
+   ```
+ - Проверить условия Available и Progressing для Deploymetn
+   ```sh
+   kubectl describe deployment web
+   ```
+ - Проверить условия Conditions у конкретной Pod:
+   ```sh
+   kubectl get po 
+   kubectl describe po *pod_name*
+   ```
+### Как проверить работоспособность Web Service ClusterIP
+  - Проверить наличие сервиса с нужным названием и типом Type:
+    ```sh
+    kubectl get svc web-svc-cip
+    ```
+  - Можно дополнительно проверить доступность сервиса на ноде:
+    ```sh
+    minikube ssh
+    curl http://<CLUSTER-IP>/index.html
+    iptables --list -nv -t nat
+    ```
+    *Примечание, ping \<CLUSTER-IP> работать не будет*
+### Как проверить работоспособность IPVS
+  - Перейти в виртуальную машину minikube:
+    ```sh
+    minikube ssh
+    ```
+  - Выполнить ping сервиса с адресом \<CLUSTER-IP>:
+    ```sh
+    ping <CLUSTER-IP>
+    ```
+  - Проверка сервиса на интерфейсе kube-ipvs0:
+    ```sh
+    ip addr show kube-ipvs0
+    ```
+### Проверка работы сервисов MetalLB
+  - Проверить работоспособность компонентов:
+    ```sh
+    kubectl --namespace metallb-system get all
+    ```
+  - После применения web-svc-lb.yaml проверить логи пода-контроллера MetalLB:
+    ```sh
+    kubectl --namespace metallb-system logs pod/controller-XXXXXXXX-XXXXXX
+    ```
+  - Посмотреть назначенный IP-адресс для сервиса:
+    ```sh
+    kubectl describe svc web-svc-lb
+    ```
+  - Перейти по адресу сервиса LodBalancer в браузере и получить веб-страницу
+### Проверка работы внешнего DNS 
+  - Проверить адресс сервиса через наш внешний DNS:
+    ```sh
+    nslookup web-svc-lb.default.svc.cluster.local 172.17.255.2
+    ```
+### Проверка работоспособности Ingress-Controller
+  - Чтобы проверить работоспособность нашего сервиса, необходимо получить его внешний адрес:
+    ```sh
+    kubectl get svc -n ingress-nginx
+    ```
+    После чего можно в браузере перейти по этому адресу, или выполнить curl:
+    ```sh
+    curl <EXTERNAL-IP>
+    ```
+    В любом случае при успешной работе мы получим страницу с 404 ошибкой и указанием на версию nginx
+### Проверка работоспособности правил Ingress
+  - После применения манифестов сервиса и Ingress правила, необходимо получить внешний адрес для подключения:
+    ```sh
+    kubectl describe ingress/web
+    ```
+  Теперь можно проверить, что страница доступна в бразуере или при помощи curl адреса http://\<LB_IP>/web/index.html
+### Проверка работоспособности dashboard
+  - Получить внешний адресс dasboard:
+    ```sh
+    kubectl get ing -n kubernetes-dashboard
+    ```
+    Перейти по адресу в браузере по адресу https://<ING-IP>/dashboard/#/login
+### Проерка работоспособности canary deployment
+  - Получить внешний адресс Ingress:
+    ```sh
+    kubectl get ing/web
+    ```
+  - Изменить образ и выполнить RolloutRestart Deployment:
+    ```sh
+    kubectl rollout restart deployment web
+    ```
+  - В браузере 30% от общего числа запросов пойдёт на новую версию Deployment
+## PR checklist:
+ - [x] Выставлен label с темой домашнего задания
+</details>

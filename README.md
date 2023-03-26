@@ -421,3 +421,61 @@ Toshikx Platform repository
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания
 </details>
+
+# Выполнено ДЗ № 4
+
+ - [X] Основное ДЗ
+ - [X] Задание со *
+<details>
+<summary>Просмотр ДЗ </summary>
+
+## В процессе сделано:
+ - Проверена работа StatefulSet в кластере Kubernets;
+ - Созданы следующие файлы манифестов: 
+    - secret.yaml - Хранение секретов для переменных окружения;
+
+
+## Как запустить проект:
+- Необходимо склонировать себе репозиторий и перейти в ветку kubernetes-intro: 
+  ```sh
+  git clone https://github.com/otus-kuber-2023-02/Toshikx_platform.git
+  cd Toshikx_platform
+  git checkout -b kubernetes-volumes
+  cd kubernetes-volumes
+  ```
+- Нужен предварительно настроенный кластер и доступ к нему при помощи kubectl на основе kind: 
+  ```sh
+  kind cluster create
+  ```
+- Применить манифесты в следующем порядке:
+  ```sh
+  kuectl apply -f secret.yaml
+  kubectl apply -f minio-headless-service.yaml
+  kubectl apply -f statefullset.yaml
+  ```
+## Как проверить работоспособность:
+### Как проверить работоспособность
+ - Проверить наличие StatefulSet:
+   ```sh
+   kubectl get statefulset/minio
+   ```
+ - Проверить наличие нужного нам PV:
+   ```sh 
+   kubectl get pv 
+   ```
+ - Проверить наличие созданного автоматически PVC:
+   ```sh
+   kubectl get pvc/data-minio-0
+   ```
+ - Проверить состояние Pod:
+   ```sh
+   kubectl get po/minio-0
+   ```
+ - Проверить, что данные в переменные окружения идут из Secrets:
+   ```sh
+   kubectl describe po/minio-0
+   ```
+   *В разделе Environment будет описано, что данные засекречены*
+## PR checklist:
+ - [x] Выставлен label с темой домашнего задания
+</details>

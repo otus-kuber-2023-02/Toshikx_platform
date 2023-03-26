@@ -15,5 +15,5 @@ roleRef:
   name: view
 subjects: 
 - kind: ServiceAccount
-  name: jane 
+  name: ken 
   namespace: dev 

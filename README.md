@@ -479,3 +479,105 @@ Toshikx Platform repository
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания
 </details>
+
+# Выполнено ДЗ № 5
+
+ - [X] Основное ДЗ
+<details>
+<summary>Просмотр ДЗ </summary>
+
+## В процессе сделано:
+ - Созданы следующие файлы манифестов: 
+    - ./task01/bob.yaml - Service Account bob с ролью admin в рамках кластера;
+    - ./task01/dave.yaml - Service Account dave без доступа к кластеру;
+    - ./task02/carol.yaml - Создание Namespace "prometheus", Service Account carol, а также доступ всем Service Account Namespace prometheus для чтения Pods всего кластера;
+    - ./task03/jane.yaml - Создание Namespace "dev", Service Account janne с ролью admin на Namespace "dev";
+    - ./task03/ken.yaml - Service Account ken с ролью view на Namespace "dev".
+
+
+## Как запустить проект:
+- Необходимо склонировать себе репозиторий и перейти в ветку kubernetes-intro: 
+  ```sh
+  git clone https://github.com/otus-kuber-2023-02/Toshikx_platform.git
+  cd Toshikx_platform
+  git checkout -b kubernetes-security
+  cd kubernetes-security
+  ```
+- Нужен предварительно настроенный кластер и доступ к нему при помощи kubectl на основе kind: 
+  ```sh
+  kind cluster create
+  ```
+- Применить манифесты в следующем порядке:
+  ```sh
+  kubectl apply -f task01
+  kubectl apply -f task02
+  kubectl apply -f task03
+  ```
+## Как проверить работоспособность:
+### Как проверить работоспособность задание 1
+ - Проверить наличие Service Account:
+   ```sh
+   kubectl get serviceaccounts | grep -a "dave\|bob"
+   ```
+ - Проверить наличие ClusterRoleBindings:
+   ```sh
+   kubectl get clusterrolebindings.rbac.authorization.k8s.io | grep -a "dave\|bob"
+   ```
+ - Проверить выданные права для Service Account dave:
+   ```sh
+   kubectl describe clusterrole admin-dave
+   ```
+ - Проверить описание созданных ClusterRoleBindings:
+   ```sh
+   kubectl describe clusterrolebindings.rbac.authorization.k8s.io bob-admin-cluster
+   kubectl describe clusterrolebindings.rbac.authorization.k8s.io dave-admin-cluster
+   ```
+### Как проверить работоспособность задание 2
+ - Проверить наличие Namespace:
+   ```sh
+   kubectl get ns | grep prometheus
+   ```
+ - Проверить наличие Service Account:
+    ```sh
+    kubectl get serviceaccounts -n prometheus | grep "carol"
+    ```
+ - Проверить наличие ClusterRole с правами pod-reader
+   ```sh
+   kubectl get clusterrole | grep pod-reader
+   ```
+ - Проверить выданные права для ClusterRole:
+   ```sh
+   kubectl describe clusterrole pod-reader
+   ```
+ - Проверить наличие ClusterRoleBindings:
+   ```sh
+   kubectl describe clusterrolebindings cluster-prometheus-ns-reader
+   ```
+ - Проверить описание созданных ClusterRoleBindings:
+   ```sh
+   kubectl describe clusterrolebindings.rbac.authorization.k8s.io cluster-prometheus-ns-reader
+   ```
+### Как проверить работоспособность задание 3
+ - Проверить наличие Namespace:
+   ```sh
+   kubectl get ns | grep dev
+   ```
+ - Проверить наличие Service Account:
+    ```sh
+    kubectl get serviceaccounts -n prometheus | grep -a "jane|\ken"
+    ```
+ - Проверить наличие RoleBinding:
+   ```sh
+   kubectl get rolebinding -n dev | grep -a "jane|\ken"
+   ```
+ - Проверить наличие описание прав RoleBinding jane:
+   ```sh
+   kubectl describe rolebinding jane-admin-namespace -n dev
+   ```
+ - Проверить наличие описание прав RoleBinding ken:
+   ```sh
+   kubectl describe rolebinding ken-admin-namespace -n dev
+   ```
+## PR checklist:
+ - [x] Выставлен label с темой домашнего задания
+</details>

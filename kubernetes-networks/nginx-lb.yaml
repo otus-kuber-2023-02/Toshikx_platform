@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller #переименованно ввиду ошибки в более новой версии ingress-controller'a. Он в логах ищет именно этот сервис
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/component: controller
+spec:
+  externalTrafficPolicy: Local
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/component: controller
+  ports:
+  - { name: http, port: 80, targetPort: http }
+  - { name: https, port: 443, targetPort: https }
